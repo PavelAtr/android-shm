@@ -22,6 +22,8 @@ Macros can be used for simple editing of the client program:
 
 #define close shm_close
 
+LINK with -landroid-shm, and NOT link with -lrt. 
+
 To run programs:
 
 shm-launch "/bin/prog1 arg1 arg2" "/bin/prog2 arg1 arg2" ... 
