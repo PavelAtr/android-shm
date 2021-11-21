@@ -27,3 +27,5 @@ LINK with -landroid-shm, and NOT link with -lrt.
 To run programs:
 
 shm-launch "/bin/prog1 arg1 arg2" "/bin/prog2 arg1 arg2" ... 
+
+!!! Launching client programs linked against libandroid-shm.so without using the shm-launch command may result in an unsafe ioctl over file descriptors.
