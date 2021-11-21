@@ -15,6 +15,9 @@
 #define MAX_SHM_FILES 100
 #define REGISTRY_FILE "/run/shmregistryfd"
 
+void* __real_mmap(void *addr, size_t length, int prot, int flags,
+                  int fd, off_t offset);
+
 typedef struct {
     char name[MAX_NAME_LENGTH];
     int fd;
@@ -48,7 +51,7 @@ __attribute__((visibility("hidden"))) finfo* load_registry()
     int regfd = load_registry_fd();
     if (regfd == -1) return NULL;
 
-    finfo* registry = (finfo*) mmap(NULL, sizeof(finfo)*MAX_SHM_FILES,
+    finfo* registry = (finfo*) __real_mmap(NULL, sizeof(finfo)*MAX_SHM_FILES,
 	PROT_READ|PROT_WRITE, MAP_SHARED, regfd, 0);
     if (registry == MAP_FAILED) 
 	return NULL;
@@ -85,7 +88,7 @@ int shm_init()
 {
     int regfd = ashmem_create_region("registry", sizeof(finfo)*MAX_SHM_FILES);
     if (regfd == -1) return -1;
-    finfo* registry = (finfo*) mmap(NULL, sizeof(finfo)*MAX_SHM_FILES,
+    finfo* registry = (finfo*) __real_mmap(NULL, sizeof(finfo)*MAX_SHM_FILES,
 	PROT_READ|PROT_WRITE, MAP_SHARED, regfd, 0);
     if (registry == MAP_FAILED) return -1;
 
@@ -156,9 +159,15 @@ void* shm_mmap(void *addr, size_t length, int prot, int flags,
     if ((fd >=4) && (fd <= MAX_SHM_FILES + 4)) // Magic numbers :)
 	if (ashmem_get_size_region(fd) < length)
 	    ashmem_resize_region(fd, length);
-
-    return mmap(addr, length, prot, flags, fd, offset);
+#ifdef SYS_mmap2
+    return (void*) syscall(SYS_mmap2, addr, length, prot, flags, fd, (size_t) offset >> 12);
+#else
+    return (void*) syscall(SYS_mmap, addr, length, prot, flags, fd, offset);
+#endif
 }
+
+void* mmap(void *addr, size_t length, int prot, int flags,
+                  int fd, off_t offset) __attribute__((alias("shm_mmap")));
 
 int shm_ftruncate(int fd, off_t length)
 {
@@ -167,13 +176,17 @@ int shm_ftruncate(int fd, off_t length)
         ashmem_resize_region(fd, length);
 	return 0;
     } else
-	return ftruncate(fd, length);
+	return (int) syscall(SYS_ftruncate, fd, length);
 }
+
+int ftruncate(int fd, off_t length) __attribute__((alias("shm_ftruncate")));
 
 int shm_close(int fd)
 {
     if ((fd >=4) && (fd <= MAX_SHM_FILES + 4))
         return 0;
     else
-	return close(fd);
+	return (int) syscall(SYS_close, fd);
 }
+
+int close(int fd) __attribute__((alias("shm_close")));

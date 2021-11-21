@@ -1,3 +1,3 @@
 #!/bin/bash
 
-./shm-launch "./test-server" "./test-client"
+./shm-launch "LD_PRELOAD=libandroid-shm.so ./test-server" "LD_PRELOAD=libandroid-shm.so ./test-client"

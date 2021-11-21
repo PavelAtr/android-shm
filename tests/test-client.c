@@ -15,8 +15,11 @@ int main(int argc, char** argv)
     int fd = shm_open("testfile", O_RDONLY, 0);
     if (fd == -1) error(errno, errno, "error shm_open()");
 
-    char* str = shm_mmap(NULL, 100, PROT_READ|PROT_WRITE, MAP_SHARED,
+    char* str = mmap(NULL, 100, PROT_READ|PROT_WRITE, MAP_SHARED,
                   fd, 0);
+
+    if (str == MAP_FAILED)
+        error(errno, errno, "error mmap()");
 
     printf("%s\n", str);
 

@@ -1,12 +1,12 @@
 libandroid-shm:
-	$(CC) -shared -g -I./include cutils/ashmem-dev.c libandroid-shm.c -o libandroid-shm$(LIBSUFFIX).so
+	$(CC) -shared -g -I./include cutils/ashmem-dev.c libandroid-shm.c -Wl,-wrap=mmap -o libandroid-shm$(LIBSUFFIX).so
 
 shm-launch:
 	$(CC) -I./include shm-launch.c -o shm-launch -L./ -landroid-shm$(LIBSUFFIX)
 
 test:
-	$(CC) -I./include tests/test-server.c -o test-server -L./ -landroid-shm$(LIBSUFFIX)
-	$(CC) -I./include tests/test-client.c -o test-client -L./ -landroid-shm$(LIBSUFFIX)
+	$(CC) -I./include tests/test-server.c -o test-server -L./ -lrt
+	$(CC) -I./include tests/test-client.c -o test-client -L./ -lrt
 
 clean:
 	rm *.so shm-launch test-client test-server || true
