@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <ashm.h>
@@ -9,7 +10,7 @@
 #include <sys/mman.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/syscall.h>
+#include <dlfcn.h>
 
 #define MAX_NAME_LENGTH 128
 #define MAX_SHM_FILES 100
@@ -153,17 +154,21 @@ int shm_unlink(const char *name)
     return 0;
 }
 
+static void* (*mmap_orig)(void*,size_t, int, int, int, off_t);
+static int (*ftruncate_orig)(int, off_t);
+static int (*close_orig)(int fd);
+
 void* shm_mmap(void *addr, size_t length, int prot, int flags,
                   int fd, off_t offset)
 {
     if ((fd >=4) && (fd <= MAX_SHM_FILES + 4)) // Magic numbers :)
 	if (ashmem_get_size_region(fd) < length)
 	    ashmem_resize_region(fd, length);
-#ifdef SYS_mmap2
-    return (void*) syscall(SYS_mmap2, addr, length, prot, flags, fd, (size_t) offset >> 12);
-#else
-    return (void*) syscall(SYS_mmap, addr, length, prot, flags, fd, offset);
-#endif
+
+    if(!mmap_orig)
+	mmap_orig = dlsym(RTLD_NEXT, "mmap");
+
+    return mmap_orig(addr, length, prot, flags, fd, offset);
 }
 
 void* mmap(void *addr, size_t length, int prot, int flags,
@@ -176,7 +181,11 @@ int shm_ftruncate(int fd, off_t length)
         ashmem_resize_region(fd, length);
 	return 0;
     } else
-	return (int) syscall(SYS_ftruncate, fd, length);
+    {
+	if(!ftruncate_orig)
+	    ftruncate_orig = dlsym(RTLD_NEXT, "ftruncate");
+	return ftruncate_orig(fd, length);
+    }
 }
 
 int ftruncate(int fd, off_t length) __attribute__((alias("shm_ftruncate")));
@@ -186,7 +195,11 @@ int shm_close(int fd)
     if ((fd >=4) && (fd <= MAX_SHM_FILES + 4))
         return 0;
     else
-	return (int) syscall(SYS_close, fd);
+    {
+	if(!close_orig)
+	    close_orig = dlsym(RTLD_NEXT, "close");
+	return close_orig(fd);
+    }
 }
 
 int close(int fd) __attribute__((alias("shm_close")));

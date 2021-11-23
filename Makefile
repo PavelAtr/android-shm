@@ -1,5 +1,5 @@
 libandroid-shm:
-	$(CC) -shared -g -I./include cutils/ashmem-dev.c libandroid-shm.c -Wl,-wrap=mmap -o libandroid-shm$(LIBSUFFIX).so
+	$(CC) -shared -g -I./include cutils/ashmem-dev.c libandroid-shm.c -Wl,-wrap=mmap -ldl -o libandroid-shm$(LIBSUFFIX).so
 
 shm-launch:
 	$(CC) -I./include shm-launch.c -o shm-launch -L./ -landroid-shm$(LIBSUFFIX)
