@@ -16,8 +16,6 @@
 #define MAX_SHM_FILES 100
 #define REGISTRY_FILE "/run/shmregistryfd"
 
-static int max_shm_files = 0;
-
 void* __real_mmap(void *addr, size_t length, int prot, int flags,
                   int fd, off_t offset);
 
@@ -54,7 +52,7 @@ __attribute__((visibility("hidden"))) finfo* load_registry()
     int regfd = load_registry_fd();
     if (regfd == -1) return NULL;
 
-    finfo* registry = (finfo*) __real_mmap(NULL, sizeof(finfo)*max_shm_files,
+    finfo* registry = (finfo*) __real_mmap(NULL, sizeof(finfo)*MAX_SHM_FILES,
 	PROT_READ|PROT_WRITE, MAP_SHARED, regfd, 0);
     if (registry == MAP_FAILED) 
 	return NULL;
@@ -64,7 +62,7 @@ __attribute__((visibility("hidden"))) finfo* load_registry()
 
 __attribute__((visibility("hidden"))) finfo* find_empty(finfo* registry)
 {
-    for (int i = 0; i < max_shm_files; i++)
+    for (int i = 0; i < MAX_SHM_FILES; i++)
     {
 	if (registry[i].nlink <= 0)
 	{
@@ -78,7 +76,7 @@ __attribute__((visibility("hidden"))) finfo* find_empty(finfo* registry)
 
 __attribute__((visibility("hidden"))) finfo* find_byname(finfo* registry, const char* fname)
 {
-    for (int i = 0; i < max_shm_files; i++)
+    for (int i = 0; i < MAX_SHM_FILES; i++)
     {
 	if (strcmp(fname, registry[i].name) == 0)
 	    return &registry[i];
@@ -87,32 +85,15 @@ __attribute__((visibility("hidden"))) finfo* find_byname(finfo* registry, const 
     return NULL;
 }
 
-int maxfiles_init()
-{
-    char* mfiles;
-
-    if (max_shm_files == 0)
-	if ((mfiles = getenv("MAX_SHM_FILES")) != NULL)
-	max_shm_files = atoi(mfiles);
-
-    if (max_shm_files == 0)
-	max_shm_files = MAX_SHM_FILES;
-
-    return 0;
-}
-
-
 int shm_init()
 {
-    maxfiles_init();
-
-    int regfd = ashmem_create_region("registry", sizeof(finfo)*max_shm_files);
+    int regfd = ashmem_create_region("registry", sizeof(finfo)*MAX_SHM_FILES);
     if (regfd == -1) return -1;
-    finfo* registry = (finfo*) __real_mmap(NULL, sizeof(finfo)*max_shm_files,
+    finfo* registry = (finfo*) __real_mmap(NULL, sizeof(finfo)*MAX_SHM_FILES,
 	PROT_READ|PROT_WRITE, MAP_SHARED, regfd, 0);
     if (registry == MAP_FAILED) return -1;
 
-    for (int i = 0; i < max_shm_files; i++)
+    for (int i = 0; i < MAX_SHM_FILES; i++)
     {
 	char* ashmemname = malloc(sizeof(char) * 8);
 	sprintf(ashmemname, "file%d", i);
@@ -123,15 +104,13 @@ int shm_init()
     }
 
     if (save_registry_fd(regfd) != 0) return -1;
-    printf("Initialized shm registry fd=%d, %d files\n", load_registry_fd(), max_shm_files);
+    printf("Initialized shm registry fd=%d\n", load_registry_fd());
 
     return 0;
 }
 
 int shm_open(const char *name, int oflag, mode_t mode)
 {
-    maxfiles_init();
-
     finfo* registry = load_registry();
     if (registry == NULL) return -1;
 
@@ -163,8 +142,6 @@ int shm_open(const char *name, int oflag, mode_t mode)
 
 int shm_unlink(const char *name)
 {
-    maxfiles_init();
-
     finfo* registry = load_registry();
     if (registry == NULL) return -1;
     finfo* file = find_byname(registry, name);
@@ -184,9 +161,7 @@ static int (*close_orig)(int fd);
 void* shm_mmap(void *addr, size_t length, int prot, int flags,
                   int fd, off_t offset)
 {
-    maxfiles_init();
-
-    if ((fd >=4) && (fd <= max_shm_files + 4)) // Magic numbers :)
+    if ((fd >=4) && (fd <= MAX_SHM_FILES + 4)) // Magic numbers :)
 	if (ashmem_get_size_region(fd) < length)
 	    ashmem_resize_region(fd, length);
 
@@ -201,9 +176,7 @@ void* mmap(void *addr, size_t length, int prot, int flags,
 
 int shm_ftruncate(int fd, off_t length)
 {
-    maxfiles_init();
-
-    if ((fd >=4) && (fd <= max_shm_files + 4))
+    if ((fd >=4) && (fd <= MAX_SHM_FILES + 4))
     {
         ashmem_resize_region(fd, length);
 	return 0;
@@ -219,9 +192,7 @@ int ftruncate(int fd, off_t length) __attribute__((alias("shm_ftruncate")));
 
 int shm_close(int fd)
 {
-    maxfiles_init();
-
-    if ((fd >=4) && (fd <= max_shm_files + 4))
+    if ((fd >=4) && (fd <= MAX_SHM_FILES + 4))
         return 0;
     else
     {
