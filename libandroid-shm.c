@@ -103,7 +103,8 @@ int shm_init()
     }
 
     if (save_registry_fd(regfd) != 0) return -1;
-    printf("Initialized shm registry fd=%d\n", load_registry_fd());
+    printf("Initialized shm registry fd=%d, %d files\n", load_registry_fd(),
+        MAX_SHM_FILES);
 
     return 0;
 }
