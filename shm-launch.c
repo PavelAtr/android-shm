@@ -19,6 +19,9 @@ char* setpreload(char* cmd)
 
     setenv("LD_PRELOAD", ldpreload, 1);
 
+    strcpy(fincmd, cmd);
+    fincmd = index(fincmd, ' ') + 1;
+
     return fincmd;
 }
 

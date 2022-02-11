@@ -14,7 +14,7 @@ clean:
 all: libandroid-shm shm-launch test
 
 install:
-	install -D --mode 755 libandroid-shm$(LIBSUFFIX).so $(DESTDIR)./usr/lib/$(TARGET)/libandroid-shm$(LIBSUFFIX).so || true
-	install -D --mode 755 shm-launch $(DESTDIR)./usr/bin/shm-launch || true
+	install -D --mode 755 libandroid-shm$(LIBSUFFIX).so $(DESTDIR)/usr/lib/$(TARGET)/libandroid-shm$(LIBSUFFIX).so || true
+	install -D --mode 755 shm-launch $(DESTDIR)/usr/bin/shm-launch || true
 
 
