@@ -64,7 +64,6 @@ int launch(char* cmd)
     }
     cargv[j] = NULL;
 
-    printf("execvp(\"%s\", cargv)", cargv[0]);
     pid_t pid = fork();
     if (pid == 0)
     {
