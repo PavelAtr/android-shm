@@ -12,6 +12,10 @@ To compile, run:
 
 make all
 
+When build with NDK toolchain use:
+
+export LDFLAGS=-landroid
+
 Macros can be used for simple editing of the client program:
 
 #include <ashm.h>

@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <strings.h>
+#include <string.h>
 #include <error.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <string.h>
 #include <ashm.h>
 #include <sys/wait.h>
 
@@ -20,7 +21,7 @@ char* setpreload(char* cmd)
     setenv("LD_PRELOAD", ldpreload, 1);
 
     strcpy(fincmd, cmd);
-    fincmd = index(fincmd, ' ') + 1;
+    fincmd = strchr(fincmd, ' ') + 1;
 
     return fincmd;
 }
@@ -65,7 +66,7 @@ int launch(char* cmd)
     pid_t pid = fork();
     if (pid == 0)
     {
-	if (execv(cargv[0], cargv))
+	if (execvp(cargv[0], cargv))
 	    return -1;
 
     } else

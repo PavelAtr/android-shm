@@ -43,6 +43,8 @@
  * `name' is an optional label to give the region (visible in /proc/pid/maps)
  * `size' is the size of the region, in page-aligned bytes
  */
+
+#ifndef __ANDROID__
 int ashmem_create_region(const char *name, size_t size)
 {
 	int fd, ret;
@@ -88,6 +90,7 @@ int ashmem_unpin_region(int fd, size_t offset, size_t len)
 	struct ashmem_pin pin = { offset, len };
 	return ioctl(fd, ASHMEM_UNPIN, &pin);
 }
+#endif
 
 int ashmem_get_size_region(int fd)
 {

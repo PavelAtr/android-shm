@@ -12,6 +12,9 @@
 
 int main(int argc, char** argv)
 {
+    for (int i = 0; i < argc; i++)
+        printf("%s\n", argv[i]);
+
     int fd = shm_open("testfile", O_RDONLY, 0);
     if (fd == -1) error(errno, errno, "error shm_open()");
 

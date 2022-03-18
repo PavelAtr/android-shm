@@ -10,6 +10,12 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/syscall.h>
+#include <error.h>
+#include <errno.h>
+#ifdef __ANDROID__
+#include <android/sharedmem.h>
+#include <android/sharedmem_jni.h>
+#endif
 
 #define MAX_NAME_LENGTH 128
 #define MAX_SHM_FILES 100
@@ -86,18 +92,34 @@ __attribute__((visibility("hidden"))) finfo* find_byname(finfo* registry, const 
 
 int shm_init()
 {
+#ifdef __ANDROID__
+    int regfd = ASharedMemory_create("registry", sizeof(finfo)*MAX_SHM_FILES);
+#else
     int regfd = ashmem_create_region("registry", sizeof(finfo)*MAX_SHM_FILES);
-    if (regfd == -1) return -1;
+#endif
+    if (regfd == -1)
+    {
+	perror("Creation region registry error\n");
+	return -1;
+    }
     finfo* registry = (finfo*) __real_mmap(NULL, sizeof(finfo)*MAX_SHM_FILES,
 	PROT_READ|PROT_WRITE, MAP_SHARED, regfd, 0);
-    if (registry == MAP_FAILED) return -1;
+    if (registry == MAP_FAILED)
+    {
+	perror("Mapping region registry error %s\n");
+	return -1;
+    }
 
     for (int i = 0; i < MAX_SHM_FILES; i++)
     {
 	char* ashmemname = malloc(sizeof(char) * 8);
 	sprintf(ashmemname, "file%d", i);
 	strcpy(registry[i].name, "");
-	registry[i].fd = ashmem_create_region(ashmemname, 0);
+#ifdef __ANDROID__
+	registry[i].fd = ASharedMemory_create(ashmemname, 10);
+#else
+	registry[i].fd = ashmem_create_region(ashmemname, 10);
+#endif
 	if (registry[i].fd == -1) return -1;
 	registry[i].nlink = 0;
     }
