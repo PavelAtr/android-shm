@@ -62,7 +62,9 @@ int launch(char* cmd)
         cargv[j] = tok;
         j++;
     }
+    cargv[j] = NULL;
 
+    printf("execvp(\"%s\", cargv)", cargv[0]);
     pid_t pid = fork();
     if (pid == 0)
     {
@@ -82,19 +84,30 @@ int launch(char* cmd)
 
 int main(int argc, char** argv)
 {
+    char* oldpreload;
 
     if (shm_init() != 0)
 	error(errno, errno, "shm_init() error");
 
+    sleep(10);
+
     for (int i = 1; i < argc; i++)
     {
 
-	oldldpreload = getenv("LD_PRELOAD");
-	if (oldldpreload == NULL)
+	char* tmp = getenv("LD_PRELOAD");
+	if (tmp == NULL)
 	    oldldpreload = "";
+	else
+	{
+	    oldpreload = malloc(strlen(tmp));
+	    strcpy(oldpreload, tmp);
+	}
+
 
 	int pid;
-	if ((pid = launch(argv[i])) == -1)
+	char* safecmd = malloc(strlen(argv[i]));
+	safecmd = strcpy(safecmd, argv[i]);
+	if ((pid = launch(safecmd)) == -1)
 	    error(errno, errno, "error launch");
 	printf("pid=%d\n", pid);
 
