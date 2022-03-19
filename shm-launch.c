@@ -9,6 +9,11 @@
 #include <ashm.h>
 #include <sys/wait.h>
 
+#include <sys/stat.h>
+#include <fcntl.h>
+
+
+
 char* oldldpreload;
 
 char* setpreload(char* cmd)
@@ -87,8 +92,6 @@ int main(int argc, char** argv)
 
     if (shm_init() != 0)
 	error(errno, errno, "shm_init() error");
-
-    sleep(10);
 
     for (int i = 1; i < argc; i++)
     {

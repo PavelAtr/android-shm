@@ -14,12 +14,12 @@
 #include <errno.h>
 #ifdef __ANDROID__
 #include <android/sharedmem.h>
-#include <android/sharedmem_jni.h>
+//#include <android/sharedmem_jni.h>
 #endif
 
 #define MAX_NAME_LENGTH 128
 #define MAX_SHM_FILES 100
-#define REGISTRY_FILE "/run/shmregistryfd"
+#define REGISTRY_ENV "SHM_REG_FD"
 
 void* __real_mmap(void *addr, size_t length, int prot, int flags,
                   int fd, off_t offset);
@@ -32,24 +32,17 @@ typedef struct {
 
 __attribute__((visibility("hidden"))) int save_registry_fd(int regfd)
 {
-/*    int fd = open(REGISTRY_FILE, O_CREAT|O_TRUNC|O_RDWR);
-    if (fd == -1) return -1;
-    dprintf(fd, "%d\n", regfd);
-    close(fd);*/
-
-    return 0;
+    char value[10];
+    sprintf(value, "%d", regfd);
+    return setenv(REGISTRY_ENV, value, 1);
 }
 
 __attribute__((visibility("hidden"))) int load_registry_fd()
 {
-/*    int regfd = -1;
-    FILE* f = fopen(REGISTRY_FILE, "r");
-    if (f == NULL) return -1;
-    fscanf(f, "%d", &regfd);
-    fclose(f);
-
-    return regfd;*/
-    return 3; // Magic numbers :)
+    char* value = getenv(REGISTRY_ENV);
+    if (value == NULL)
+	return -1;
+    return atoi(value);
 }
 
 __attribute__((visibility("hidden"))) finfo* load_registry()
@@ -59,7 +52,7 @@ __attribute__((visibility("hidden"))) finfo* load_registry()
 
     finfo* registry = (finfo*) __real_mmap(NULL, sizeof(finfo)*MAX_SHM_FILES,
 	PROT_READ|PROT_WRITE, MAP_SHARED, regfd, 0);
-    if (registry == MAP_FAILED) 
+    if (registry == MAP_FAILED)
 	return NULL;
 
     return registry;
@@ -90,6 +83,16 @@ __attribute__((visibility("hidden"))) finfo* find_byname(finfo* registry, const 
     return NULL;
 }
 
+int reset_cloexec(int fd)
+{
+
+    int oldflags = fcntl(fd, F_GETFD);
+    if (oldflags == -1)
+	return -1;
+    oldflags &= ~FD_CLOEXEC;
+    return fcntl (fd, F_SETFD, oldflags);
+}
+
 int shm_init()
 {
 #ifdef __ANDROID__
@@ -97,18 +100,15 @@ int shm_init()
 #else
     int regfd = ashmem_create_region("registry", sizeof(finfo)*MAX_SHM_FILES);
 #endif
-    if (regfd == -1)
-    {
-	perror("Creation region registry error\n");
+    if (regfd < 0)
 	return -1;
-    }
+    if (reset_cloexec(regfd) < 0)
+	return -1;
+
     finfo* registry = (finfo*) __real_mmap(NULL, sizeof(finfo)*MAX_SHM_FILES,
 	PROT_READ|PROT_WRITE, MAP_SHARED, regfd, 0);
     if (registry == MAP_FAILED)
-    {
-	perror("Mapping region registry error %s\n");
 	return -1;
-    }
 
     for (int i = 0; i < MAX_SHM_FILES; i++)
     {
@@ -120,12 +120,14 @@ int shm_init()
 #else
 	registry[i].fd = ashmem_create_region(ashmemname, 10);
 #endif
-	if (registry[i].fd == -1) return -1;
+	if (registry[i].fd < 0) return -1;
+	if (reset_cloexec(registry[i].fd) < 0)
+	    return -1;
 	registry[i].nlink = 0;
     }
 
     if (save_registry_fd(regfd) != 0) return -1;
-    printf("Initialized shm registry fd=%d, %d files\n", load_registry_fd(),
+    printf("Initialized shm registry fd=%d, %d files\n", regfd,
         MAX_SHM_FILES);
 
     return 0;
@@ -139,6 +141,8 @@ int shm_open(const char *name, int oflag, mode_t mode)
     finfo* file = find_byname(registry, name);
     if (file != NULL) 
     {
+	if (oflag & O_CREAT)
+	    return -1;
 	if (oflag & O_TRUNC)
 	    ashmem_resize_region(file->fd, 0);
 	file->nlink++;
@@ -156,7 +160,8 @@ int shm_open(const char *name, int oflag, mode_t mode)
 	    printf("creating file \"%s\" fd=%d nlink=%u\n", file->name, file->fd, file->nlink);
 	    return file->fd;
 	}
-	return -1;
+	else
+	    return -1;
     }
 
     return -1;

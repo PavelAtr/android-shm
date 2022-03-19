@@ -1,8 +1,8 @@
 libandroid-shm:
-	$(CC) $(CFLAGS) -shared -g -I./include cutils/ashmem-dev.c libandroid-shm.c -Wl,-wrap=mmap $(LDFLAGS) -o libandroid-shm$(LIBSUFFIX).so
+	$(CC) $(CFLAGS) -fPIC -shared -g -I./include cutils/ashmem-dev.c libandroid-shm.c -Wl,-wrap=mmap $(LDFLAGS) -o libandroid-shm$(LIBSUFFIX).so
 
 shm-launch:
-	$(CC) $(CFLAGS) -I./include shm-launch.c $(LDFLAGS) -o shm-launch -L./ -landroid-shm$(LIBSUFFIX)
+	$(CC) $(CFLAGS) -fPIC  -I./include shm-launch.c $(LDFLAGS) -o shm-launch -L./ -landroid-shm$(LIBSUFFIX)
 
 test:
 	$(CC) $(CFLAGS) -I./include tests/test-server.c $(LDFLAGS) -o test-server -L./ -lrt
