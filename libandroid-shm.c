@@ -141,10 +141,8 @@ int shm_open(const char *name, int oflag, mode_t mode)
     finfo* file = find_byname(registry, name);
     if (file != NULL) 
     {
-	if (oflag & O_CREAT)
-	    return -1;
 	if (oflag & O_TRUNC)
-	    ashmem_resize_region(file->fd, 0);
+	    ashmem_resize_region(file->fd, 10);
 	file->nlink++;
 	printf("opening file \"%s\" fd=%d nlink=%u\n", file->name, file->fd, file->nlink);
 	return file->fd;

@@ -16,4 +16,4 @@ all: libandroid-shm shm-launch test
 install:
 	install -D --mode 755 libandroid-shm$(LIBSUFFIX).so $(DESTDIR)/$(PREFIX)/lib/$(TARGET)/libandroid-shm$(LIBSUFFIX).so
 	install -D --mode 755 shm-launch $(DESTDIR)/$(PREFIX)/bin/shm-launch
-	install -D --mode 644 include/ashm.h $(DESTDIR)/usr/include/
+	install -D --mode 644 include/ashm.h $(DESTDIR)/$(PREFIX)/include/ashm.h
